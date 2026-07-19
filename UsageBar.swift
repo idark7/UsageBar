@@ -211,10 +211,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func updateUI(animated: Bool) {
         // status bar title — two stacked lines to save width
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .semibold)
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .bold)
         let para = NSMutableParagraphStyle()
-        para.maximumLineHeight = 10
-        para.minimumLineHeight = 10
+        para.maximumLineHeight = 11.5
+        para.minimumLineHeight = 11.5
         para.alignment = .left
         let title = NSMutableAttributedString()
         func seg(_ label: String, _ u: Usage) {
