@@ -211,23 +211,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func updateUI(animated: Bool) {
         // status bar title — two stacked lines to save width
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .bold)
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 14, weight: .bold)
         let para = NSMutableParagraphStyle()
-        para.maximumLineHeight = 12
-        para.minimumLineHeight = 12
+        para.maximumLineHeight = 14
+        para.minimumLineHeight = 14
         para.alignment = .left
+        let off: CGFloat = -3
         let title = NSMutableAttributedString()
         func seg(_ label: String, _ u: Usage) {
             title.append(NSAttributedString(string: label,
                 attributes: [.font: font, .foregroundColor: NSColor.labelColor,
-                             .paragraphStyle: para]))
+                             .paragraphStyle: para, .baselineOffset: off]))
             var s = "–"
             if let p = u.session {
                 s = String(format: "%.0f", showRemaining ? max(0, 100 - p) : p)
             }
             title.append(NSAttributedString(string: s,
                 attributes: [.font: font, .foregroundColor: barColor(u.session),
-                             .paragraphStyle: para]))
+                             .paragraphStyle: para, .baselineOffset: off]))
         }
         seg("C", claude)
         title.append(NSAttributedString(string: "\n",
