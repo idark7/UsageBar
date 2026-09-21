@@ -1,6 +1,6 @@
 cask "usagebar" do
-  version "3.0.0"
-  sha256 "d8f0e0b64c7b1e8c4f34ceba5098dbf987dc912182c8f1b12800e7e6121af413"
+  version "3.0.1"
+  sha256 "b8b647596811fff241602cfa5a736fb70d67657af8800b3fb69c052c5cc42191"
 
   url "https://github.com/idark7/UsageBar/releases/download/v#{version}/UsageBar-#{version}.dmg"
   name "UsageBar"
