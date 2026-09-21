@@ -8,7 +8,7 @@
 - **Zero setup** — if you use the Claude desktop app, it just works. No login, no API token.
 - Native **notifications** at 80 % and 95 %, and when a window resets
 - **24h sparkline** of your Claude usage
-- Three menu bar styles: two‑line pill, compact `C89 X100`, or icon with a status dot
+- Three menu bar styles: two‑line pill, compact `C89 X100`, or gauge rings
 - Countdown to reset in the menu bar when you're nearly out
 - Show % remaining (default) or % used
 - Click a row to open the provider's usage page

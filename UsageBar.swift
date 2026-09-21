@@ -31,12 +31,12 @@ enum Provider: String, CaseIterable {
 }
 
 enum MenuStyle: String, CaseIterable {
-    case pill, compact, dot
+    case pill, compact, rings
     var title: String {
         switch self {
         case .pill: return "Two-line Pill"
         case .compact: return "Compact Text"
-        case .dot: return "Icon with Status Dot"
+        case .rings: return "Gauge Rings"
         }
     }
 }
@@ -550,7 +550,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNotifi
         switch Prefs.style {
         case .pill: renderPill(button)
         case .compact: renderCompact(button)
-        case .dot: renderDot(button)
+        case .rings: renderRings(button)
         }
     }
 
@@ -612,16 +612,42 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNotifi
         button.attributedTitle = s
     }
 
-    /// Sparkle glyph with a coloured dot for the worst window.
-    func renderDot(_ button: NSStatusBarButton) {
-        let worst = activeProviders.compactMap { usage[$0]?.session }.max()
-        let image = NSImage(size: NSSize(width: 22, height: 18))
+    /// One ring per provider: the arc is what's left of the 5-hour window,
+    /// coloured by status, with the provider letter inside. Template-drawn so
+    /// the letter and track follow the menu bar's light/dark appearance.
+    func renderRings(_ button: NSStatusBarButton) {
+        let providers = activeProviders
+        let d: CGFloat = 18, gap: CGFloat = 4, lw: CGFloat = 2.5
+        let width = CGFloat(providers.count) * d + CGFloat(max(0, providers.count - 1)) * gap + 2
+        let image = NSImage(size: NSSize(width: width, height: 22))
         image.lockFocus()
-        let glyph = NSAttributedString(string: "✱", attributes: [
-            .font: NSFont.systemFont(ofSize: 15, weight: .medium), .foregroundColor: NSColor.labelColor])
-        glyph.draw(at: NSPoint(x: 1, y: 0))
-        barColor(worst).setFill()
-        NSBezierPath(ovalIn: NSRect(x: 14, y: 11, width: 6, height: 6)).fill()
+        let font = NSFont.systemFont(ofSize: 9, weight: .bold)
+        for (i, p) in providers.enumerated() {
+            let x = 1 + CGFloat(i) * (d + gap)
+            let rect = NSRect(x: x + lw / 2, y: 2 + lw / 2, width: d - lw, height: d - lw)
+            let center = NSPoint(x: rect.midX, y: rect.midY)
+            let radius = rect.width / 2
+            // track
+            let track = NSBezierPath(ovalIn: rect)
+            track.lineWidth = lw
+            NSColor.labelColor.withAlphaComponent(0.2).setStroke()
+            track.stroke()
+            // remaining arc, clockwise from 12 o'clock
+            let used = usage[p]?.session
+            let left = 1 - min(1, max(0, (used ?? 0) / 100))
+            if used != nil, left > 0 {
+                let arc = NSBezierPath()
+                arc.appendArc(withCenter: center, radius: radius, startAngle: 90,
+                              endAngle: 90 - 360 * left, clockwise: true)
+                arc.lineWidth = lw
+                arc.lineCapStyle = .round
+                barColor(used).setStroke()
+                arc.stroke()
+            }
+            let g = NSAttributedString(string: p.glyph, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
+            let sz = g.size()
+            g.draw(at: NSPoint(x: center.x - sz.width / 2, y: center.y - sz.height / 2 + 0.5))
+        }
         image.unlockFocus()
         image.isTemplate = false
         button.image = image
