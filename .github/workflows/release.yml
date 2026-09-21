@@ -1,0 +1,35 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  build:
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import Developer ID certificate (optional)
+        if: ${{ secrets.MACOS_CERT_P12 != '' }}
+        env:
+          CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          echo "$CERT_P12" | base64 --decode > cert.p12
+          security create-keychain -p ci build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p ci build.keychain
+          security import cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci build.keychain
+          xcrun notarytool store-credentials notary \
+            --apple-id "${{ secrets.APPLE_ID }}" \
+            --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+            --password "${{ secrets.APPLE_APP_PASSWORD }}"
+          echo "SIGN_ID=${{ secrets.MACOS_SIGN_ID }}" >> "$GITHUB_ENV"
+          echo "NOTARY_PROFILE=notary" >> "$GITHUB_ENV"
+      - name: Build
+        run: VERSION=${GITHUB_REF_NAME} ./build.sh
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: build/*.dmg
+          generate_release_notes: true
