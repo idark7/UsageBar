@@ -158,9 +158,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var clErrItem = NSMenuItem()
     var cxErrItem = NSMenuItem()
 
+    // Remaining is the default; the "showUsed" pref flips it.
     var showRemaining: Bool {
-        get { UserDefaults.standard.bool(forKey: "showRemaining") }
-        set { UserDefaults.standard.set(newValue, forKey: "showRemaining") }
+        get { !UserDefaults.standard.bool(forKey: "showUsed") }
+        set { UserDefaults.standard.set(!newValue, forKey: "showUsed") }
     }
     var remainingItem = NSMenuItem()
     var refreshMenu = NSMenu()
@@ -209,32 +210,78 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    func updateUI(animated: Bool) {
-        // status bar title — two stacked lines to save width
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 14, weight: .bold)
-        let para = NSMutableParagraphStyle()
-        para.maximumLineHeight = 14
-        para.minimumLineHeight = 14
-        para.alignment = .left
-        let off: CGFloat = -3
-        let title = NSMutableAttributedString()
-        func seg(_ label: String, _ u: Usage) {
-            title.append(NSAttributedString(string: label,
-                attributes: [.font: font, .foregroundColor: NSColor.labelColor,
-                             .paragraphStyle: para, .baselineOffset: off]))
-            var s = "–"
-            if let p = u.session {
-                s = String(format: "%.0f", showRemaining ? max(0, 100 - p) : p)
-            }
-            title.append(NSAttributedString(string: s,
-                attributes: [.font: font, .foregroundColor: barColor(u.session),
-                             .paragraphStyle: para, .baselineOffset: off]))
+    /// Status bar content, drawn as an image rather than a multi-line title:
+    /// the button cell clips two-line titles and mis-centres them in the taller
+    /// menu bar on notched Macs. Dark pill so the text has contrast over any wallpaper.
+    func renderStatusImage() {
+        guard let button = statusItem.button else { return }
+
+        let thickness = NSStatusBar.system.thickness
+        let safeTop = NSScreen.main?.safeAreaInsets.top ?? 0
+        let height = safeTop > thickness ? safeTop : thickness
+
+        let gap: CGFloat = 2
+        var size: CGFloat = 13
+        var font = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .heavy)
+        // Stack on cap height — these are digits, the font's leading is wasted space.
+        while font.capHeight * 2 + gap > height - 5, size > 7 {
+            size -= 0.5
+            font = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .heavy)
         }
-        seg("C", claude)
-        title.append(NSAttributedString(string: "\n",
-            attributes: [.font: font, .paragraphStyle: para]))
-        seg("X", codex)
-        statusItem.button?.attributedTitle = title
+
+        func line(_ label: String, _ u: Usage) -> NSAttributedString {
+            let s = NSMutableAttributedString(string: label, attributes: [
+                .font: font, .foregroundColor: NSColor.white
+            ])
+            var value = "–"
+            if let p = u.session {
+                value = String(format: "%.0f", showRemaining ? max(0, 100 - p) : p)
+            }
+            // Brighten the status colour so it reads on the dark pill.
+            let tint = barColor(u.session).blended(withFraction: 0.25, of: .white)
+                ?? barColor(u.session)
+            s.append(NSAttributedString(string: value, attributes: [
+                .font: font, .foregroundColor: tint
+            ]))
+            return s
+        }
+
+        let first = line("C", claude)
+        let second = line("X", codex)
+        let textHeight = font.capHeight * 2 + gap
+        let padX: CGFloat = 7
+        let width = ceil(max(first.size().width, second.size().width) + padX * 2)
+
+        let image = NSImage(size: NSSize(width: width, height: height))
+        image.lockFocus()
+
+        let inset: CGFloat = 1
+        let pill = NSBezierPath(
+            roundedRect: NSRect(x: 0.5, y: inset, width: width - 1, height: height - inset * 2),
+            xRadius: 6, yRadius: 6
+        )
+        NSColor.black.withAlphaComponent(0.62).setFill()
+        pill.fill()
+        NSColor.white.withAlphaComponent(0.35).setStroke()
+        pill.lineWidth = 1
+        pill.stroke()
+
+        // NSImage origin is bottom-left; `draw(at:)` places the line box bottom at y.
+        let bottomBaseline = (height - textHeight) / 2 - 1.5
+        first.draw(at: NSPoint(x: padX, y: bottomBaseline + font.capHeight + gap + font.descender))
+        second.draw(at: NSPoint(x: padX, y: bottomBaseline + font.descender))
+
+        image.unlockFocus()
+        image.isTemplate = false
+
+        button.image = image
+        button.imagePosition = .imageOnly
+        button.attributedTitle = NSAttributedString(string: "")
+        statusItem.length = width
+    }
+
+    func updateUI(animated: Bool) {
+        renderStatusImage()
 
         clSession.update(pct: claude.session, reset: claude.sessionReset, remaining: showRemaining)
         clWeekly.update(pct: claude.weekly, reset: claude.weeklyReset, remaining: showRemaining)
@@ -273,10 +320,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         cxErrItem = viewItem(cxErr); menu.addItem(cxErrItem)
         menu.addItem(.separator())
 
-        remainingItem = NSMenuItem(title: "Show Remaining Instead of Used",
+        remainingItem = NSMenuItem(title: "Show Used Instead of Remaining",
                                    action: #selector(toggleRemaining), keyEquivalent: "")
         remainingItem.target = self
-        remainingItem.state = showRemaining ? .on : .off
+        remainingItem.state = showRemaining ? .off : .on
         menu.addItem(remainingItem)
 
         refreshMenu = NSMenu()
@@ -321,7 +368,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func toggleRemaining() {
         showRemaining.toggle()
-        remainingItem.state = showRemaining ? .on : .off
+        remainingItem.state = showRemaining ? .off : .on
         updateUI(animated: false)
     }
 
