@@ -1,6 +1,6 @@
 cask "usagebar" do
   version "3.0.0"
-  sha256 :no_check # replace with the DMG's sha256 after the first release
+  sha256 ""
 
   url "https://github.com/idark7/UsageBar/releases/download/v#{version}/UsageBar-#{version}.dmg"
   name "UsageBar"
