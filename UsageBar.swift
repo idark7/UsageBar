@@ -617,14 +617,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNotifi
     /// the letter and track follow the menu bar's light/dark appearance.
     func renderRings(_ button: NSStatusBarButton) {
         let providers = activeProviders
-        let d: CGFloat = 18, gap: CGFloat = 4, lw: CGFloat = 2.5
+        let d: CGFloat = 19, gap: CGFloat = 5, lw: CGFloat = 3
         let width = CGFloat(providers.count) * d + CGFloat(max(0, providers.count - 1)) * gap + 2
         let image = NSImage(size: NSSize(width: width, height: 22))
         image.lockFocus()
-        let font = NSFont.systemFont(ofSize: 9, weight: .bold)
+        // Resolve dynamic colours against the menu bar's appearance, not the app's.
+        button.effectiveAppearance.performAsCurrentDrawingAppearance {
+        let font = NSFont.systemFont(ofSize: 9.5, weight: .bold)
         for (i, p) in providers.enumerated() {
             let x = 1 + CGFloat(i) * (d + gap)
-            let rect = NSRect(x: x + lw / 2, y: 2 + lw / 2, width: d - lw, height: d - lw)
+            let rect = NSRect(x: x + lw / 2, y: 1.5 + lw / 2, width: d - lw, height: d - lw)
             let center = NSPoint(x: rect.midX, y: rect.midY)
             let radius = rect.width / 2
             // track
@@ -647,6 +649,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNotifi
             let g = NSAttributedString(string: p.glyph, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
             let sz = g.size()
             g.draw(at: NSPoint(x: center.x - sz.width / 2, y: center.y - sz.height / 2 + 0.5))
+        }
         }
         image.unlockFocus()
         image.isTemplate = false
