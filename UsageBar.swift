@@ -391,7 +391,7 @@ final class HeaderView: NSView {
         title.stringValue = text
         title.frame = NSRect(x: 14, y: 4, width: 150, height: 18)
         meta.font = .systemFont(ofSize: 10)
-        meta.textColor = .tertiaryLabelColor
+        meta.textColor = .secondaryLabelColor
         meta.alignment = .right
         meta.frame = NSRect(x: 150, y: 6, width: 136, height: 14)
         addSubview(title); addSubview(meta)
@@ -422,7 +422,7 @@ final class SparklineView: NSView {
         let cutoff = Date().addingTimeInterval(-24 * 3600)
         let pts = samples.filter { $0.t > cutoff }
         let label = NSAttributedString(string: "Last 24h · 5-hour window", attributes: [
-            .font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.tertiaryLabelColor])
+            .font: NSFont.systemFont(ofSize: 9), .foregroundColor: NSColor.secondaryLabelColor])
         label.draw(at: NSPoint(x: 14, y: bounds.height - 12))
         guard pts.count > 1 else { return }
         let path = NSBezierPath()
@@ -799,7 +799,57 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNotifi
     @objc func doRefresh() { refresh() }
 }
 
+// MARK: - Snapshot (hidden): `UsageBar --snapshot out.png` renders the dropdown
+// with live data to a PNG. Used for the README hero image and visual checks.
+
+func renderSnapshot(to path: String) {
+    NSApp.appearance = NSAppearance(named: .darkAqua)
+    let usage: [Provider: Usage] = [.claude: ClaudeSource.fetch(), .codex: CodexSource.fetch()]
+    let samples = ClaudeSource.desktopSamples()
+    let width: CGFloat = 300
+    var views: [NSView] = []
+    for p in Provider.allCases {
+        let h = HeaderView(p.name)
+        if let u = usage[p], let a = u.asOf { h.meta.stringValue = (u.source.map { $0 + " · " } ?? "") + fmtAgo(a) }
+        let s = UsageRowView(title: "Current session"), w = UsageRowView(title: p == .claude ? "Weekly · all models" : "Weekly")
+        s.update(pct: usage[p]?.session, reset: usage[p]?.sessionReset, estimate: usage[p]?.resetIsEstimate ?? false)
+        w.update(pct: usage[p]?.weekly, reset: usage[p]?.weeklyReset, estimate: false)
+        views += [h, s, w]
+        if p == .claude, samples.count > 1 { let sp = SparklineView(); sp.samples = samples; views.append(sp) }
+        let sep = NSBox(); sep.boxType = .separator; sep.frame = NSRect(x: 14, y: 0, width: width - 28, height: 1)
+        let sepWrap = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 12)); sepWrap.addSubview(sep); sep.frame.origin.y = 5
+        views.append(sepWrap)
+    }
+    for t in ["Show Used Instead of Remaining", "Menu Bar Style", "Providers", "Auto Refresh",
+              "Notify at 80% / 95% and on Reset", "Launch at Login"] {
+        let l = NSTextField(labelWithString: t); l.font = .systemFont(ofSize: 13)
+        let wrap = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 22)); l.frame = NSRect(x: 14, y: 3, width: 270, height: 17)
+        wrap.addSubview(l); views.append(wrap)
+    }
+    let pad: CGFloat = 6
+    let total = views.reduce(pad * 2) { $0 + $1.frame.height }
+    let panel = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: width, height: total))
+    panel.material = .menu; panel.state = .active; panel.wantsLayer = true
+    panel.layer?.cornerRadius = 10; panel.layer?.masksToBounds = true
+    var y = total - pad
+    for v in views {
+        y -= v.frame.height
+        v.frame = NSRect(x: 0, y: y, width: width, height: v.frame.height)
+        panel.addSubview(v)
+        v.layoutSubtreeIfNeeded()
+        (v as? UsageRowView)?.layout()
+    }
+    let rep = panel.bitmapImageRepForCachingDisplay(in: panel.bounds)!
+    panel.cacheDisplay(in: panel.bounds, to: rep)
+    try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+}
+
 let app = NSApplication.shared
+if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), CommandLine.arguments.count > i + 1 {
+    app.setActivationPolicy(.prohibited)
+    renderSnapshot(to: CommandLine.arguments[i + 1])
+    exit(0)
+}
 app.setActivationPolicy(.accessory)
 let delegate = AppDelegate()
 app.delegate = delegate

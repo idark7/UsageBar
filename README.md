@@ -2,7 +2,7 @@
 
 **Claude Code + Codex limits in your macOS menu bar. Never hit the 5‑hour wall by surprise again.**
 
-<!-- TODO: hero GIF of the menu bar + dropdown -->
+<p align="center"><img src="docs/dropdown.png" width="300" alt="UsageBar dropdown"></p>
 
 - Live 5‑hour and weekly usage for **Claude Code** and **Codex**, colour‑coded green / yellow / red
 - **Zero setup** — if you use the Claude desktop app, it just works. No login, no API token.
@@ -16,7 +16,11 @@
 
 ## Install
 
-Download the latest `UsageBar-x.y.z.dmg` from [Releases](../../releases), drag to Applications.
+```bash
+brew install idark7/tap/usagebar
+```
+
+or download the latest `UsageBar-x.y.z.dmg` from [Releases](../../releases), drag to Applications.
 
 > Until the app is notarized, macOS will say it "can't be opened". Right‑click the app → **Open** once, or
 > allow it under *System Settings → Privacy & Security*.
@@ -55,7 +59,7 @@ It also gives you a `Opus | 5h 11% | wk 26% | project` status line in the termin
 ## Releasing
 
 Tag `vX.Y.Z` and push; the GitHub Action builds a universal DMG and attaches it to the release.
-Add `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `MACOS_SIGN_ID`, `APPLE_ID`, `APPLE_TEAM_ID`,
+`UsageBar --snapshot out.png` renders the dropdown for docs. Add `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `MACOS_SIGN_ID`, `APPLE_ID`, `APPLE_TEAM_ID`,
 `APPLE_APP_PASSWORD` secrets to get Developer ID signing + notarization.
 
 ## License
